@@ -1,0 +1,494 @@
+openapi: 3.0.3
+info:
+  title: Agent Permission API
+  description: |
+    API for managing user permissions to access specialized AI agents.
+
+    This API allows general-purpose AI agents to:
+    1. Check if a user exists in the system
+    2. Verify which specialized agents a user has access to
+    3. Grant new permissions to users
+    4. Create new users with empty permissions
+
+    **Base URL**: `https://kpfnbcvnfb.execute-api.us-east-1.amazonaws.com/dev/`
+
+    **Authentication**: None required (public endpoints)
+
+    **Rate Limits**: Standard AWS API Gateway limits apply
+  version: 1.0.0
+  contact:
+    name: Agent Permission API
+  license:
+    name: MIT
+
+servers:
+  - url: https://kpfnbcvnfb.execute-api.us-east-1.amazonaws.com/dev
+    description: Production API
+  - url: http://localhost:3000
+    description: Local development (SAM Local)
+
+paths:
+  /users/{user_id}:
+    get:
+      summary: Check if user exists
+      description: |
+        Verifies if a user exists in the permission system.
+
+        **Use Case**: Before checking permissions, verify the user exists.
+
+        **Agent Instructions**: Use this endpoint to validate a user_id before attempting other operations.
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: The unique identifier for the user (case-insensitive)
+          schema:
+            type: string
+            example: "user_123"
+      responses:
+        '200':
+          description: User exists in the system
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserExistsResponse'
+              example:
+                status: "success"
+                data:
+                  user_id: "user_123"
+                  exists: true
+                message: "User exists in the system"
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: "error"
+                error:
+                  code: "USER_NOT_FOUND"
+                  message: "User was not found in the system"
+                  user_id: "user_123"
+        '500':
+          description: Service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users:
+    post:
+      summary: Create a new user
+      description: |
+        Creates a new user with empty permissions.
+
+        **Use Case**: When a new user needs to be added to the system.
+
+        **Agent Instructions**: Use this to create users before granting them permissions.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+            example:
+              user_id: "new_user_456"
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateUserResponse'
+              example:
+                status: "success"
+                data:
+                  user_id: "new_user_456"
+                  permitted_agents: []
+                  created_at: "2024-01-15T10:30:00Z"
+                message: "User created successfully"
+        '400':
+          description: Invalid request (missing user_id or invalid JSON)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: "error"
+                error:
+                  code: "USER_ALREADY_EXISTS"
+                  message: "User already exists in the system"
+                  user_id: "existing_user"
+        '500':
+          description: Service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /permissions/{user_id}:
+    get:
+      summary: Get user's agent permissions
+      description: |
+        Retrieves all specialized agents that a user has permission to access.
+
+        **Use Case**: Before invoking a specialized agent, check if the user has access.
+
+        **Agent Instructions**:
+        1. Call this endpoint with the user_id
+        2. Check if the desired agent is in the `permitted_agents` array
+        3. If agent is present, proceed with agent invocation
+        4. If agent is not present, inform user they lack permission
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: The unique identifier for the user (case-insensitive)
+          schema:
+            type: string
+            example: "user_123"
+      responses:
+        '200':
+          description: User permissions retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PermissionsResponse'
+              example:
+                status: "success"
+                data:
+                  user_id: "user_123"
+                  permitted_agents: ["code-reviewer", "data-analyst", "image-generator"]
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: "error"
+                error:
+                  code: "USER_NOT_FOUND"
+                  message: "User was not found in the system"
+                  user_id: "unknown_user"
+        '500':
+          description: Service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /permissions/{user_id}/agents:
+    post:
+      summary: Grant agent permission to user
+      description: |
+        Adds permission for a user to access a specific specialized agent.
+
+        **Use Case**: When a user needs access to a new specialized agent.
+
+        **Agent Instructions**:
+        1. Use this to grant users access to new agents
+        2. If user doesn't exist, they will be created automatically
+        3. If permission already exists, the request succeeds (idempotent)
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: The unique identifier for the user (case-insensitive)
+          schema:
+            type: string
+            example: "user_123"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddPermissionRequest'
+            example:
+              agent_name: "code-reviewer"
+      responses:
+        '200':
+          description: Permission added successfully (or already existed)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddPermissionResponse'
+              examples:
+                permission_added:
+                  summary: New permission added
+                  value:
+                    status: "success"
+                    data:
+                      user_id: "user_123"
+                      agent_added: "code-reviewer"
+                      permitted_agents: ["data-analyst", "code-reviewer"]
+                    message: "Permission added successfully"
+                permission_exists:
+                  summary: Permission already exists
+                  value:
+                    status: "success"
+                    data:
+                      user_id: "user_123"
+                      agent_added: "code-reviewer"
+                      permitted_agents: ["code-reviewer", "data-analyst"]
+                    message: "Permission already exists"
+                user_created:
+                  summary: New user created with permission
+                  value:
+                    status: "success"
+                    data:
+                      user_id: "new_user_789"
+                      agent_added: "code-reviewer"
+                      permitted_agents: ["code-reviewer"]
+                    message: "User created and permission added successfully"
+        '400':
+          description: Invalid request (missing agent_name or invalid JSON)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: "error"
+                error:
+                  code: "INVALID_REQUEST"
+                  message: "agent_name is required"
+        '500':
+          description: Service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    UserExistsResponse:
+      type: object
+      required:
+        - status
+        - data
+        - message
+      properties:
+        status:
+          type: string
+          enum: ["success"]
+        data:
+          type: object
+          required:
+            - user_id
+            - exists
+          properties:
+            user_id:
+              type: string
+              description: The normalized user ID (lowercase)
+            exists:
+              type: boolean
+              enum: [true]
+        message:
+          type: string
+          example: "User exists in the system"
+
+    CreateUserRequest:
+      type: object
+      required:
+        - user_id
+      properties:
+        user_id:
+          type: string
+          description: Unique identifier for the new user
+          example: "new_user_456"
+
+    CreateUserResponse:
+      type: object
+      required:
+        - status
+        - data
+        - message
+      properties:
+        status:
+          type: string
+          enum: ["success"]
+        data:
+          type: object
+          required:
+            - user_id
+            - permitted_agents
+            - created_at
+          properties:
+            user_id:
+              type: string
+              description: The normalized user ID (lowercase)
+            permitted_agents:
+              type: array
+              items:
+                type: string
+              description: Always empty for new users
+              example: []
+            created_at:
+              type: string
+              format: date-time
+              description: ISO 8601 timestamp of user creation
+        message:
+          type: string
+          example: "User created successfully"
+
+    PermissionsResponse:
+      type: object
+      required:
+        - status
+        - data
+      properties:
+        status:
+          type: string
+          enum: ["success"]
+        data:
+          type: object
+          required:
+            - user_id
+            - permitted_agents
+          properties:
+            user_id:
+              type: string
+              description: The normalized user ID (lowercase)
+            permitted_agents:
+              type: array
+              items:
+                type: string
+              description: List of agent names the user can access
+              example: ["code-reviewer", "data-analyst", "image-generator"]
+
+    AddPermissionRequest:
+      type: object
+      required:
+        - agent_name
+      properties:
+        agent_name:
+          type: string
+          description: Name of the specialized agent to grant access to
+          example: "code-reviewer"
+
+    AddPermissionResponse:
+      type: object
+      required:
+        - status
+        - data
+        - message
+      properties:
+        status:
+          type: string
+          enum: ["success"]
+        data:
+          type: object
+          required:
+            - user_id
+            - agent_added
+            - permitted_agents
+          properties:
+            user_id:
+              type: string
+              description: The normalized user ID (lowercase)
+            agent_added:
+              type: string
+              description: The agent that was added (or already existed)
+            permitted_agents:
+              type: array
+              items:
+                type: string
+              description: Complete list of agents the user can now access
+        message:
+          type: string
+          enum:
+            - "Permission added successfully"
+            - "Permission already exists"
+            - "User created and permission added successfully"
+
+    ErrorResponse:
+      type: object
+      required:
+        - status
+        - error
+      properties:
+        status:
+          type: string
+          enum: ["error"]
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              enum:
+                - "USER_NOT_FOUND"
+                - "USER_ALREADY_EXISTS"
+                - "INVALID_REQUEST"
+                - "SERVICE_UNAVAILABLE"
+                - "NOT_FOUND"
+              description: Machine-readable error code
+            message:
+              type: string
+              description: Human-readable error message
+            user_id:
+              type: string
+              description: The user ID that caused the error (when applicable)
+
+  # Common agent names for reference
+  examples:
+    CommonAgentNames:
+      summary: Common specialized agent names
+      value:
+        - "code-reviewer"
+        - "data-analyst"
+        - "image-generator"
+        - "pdf-processor"
+        - "test-runner"
+        - "security-scanner"
+        - "document-writer"
+        - "api-tester"
+
+# Additional documentation for AI agents
+x-ai-agent-instructions: |
+  ## Quick Start for AI Agents
+
+  ### Basic Permission Check Workflow:
+  1. **Check if user exists**: `GET /users/{user_id}`
+  2. **Get user permissions**: `GET /permissions/{user_id}`
+  3. **Verify access**: Check if desired agent is in `permitted_agents` array
+  4. **Grant access if needed**: `POST /permissions/{user_id}/agents`
+
+  ### Example Implementation:
+  ```python
+  # Check if user can access "code-reviewer" agent
+  response = requests.get(f"{base_url}/permissions/{user_id}")
+
+  if response.status_code == 200:
+      data = response.json()
+      if "code-reviewer" in data["data"]["permitted_agents"]:
+          # User has access - proceed with agent invocation
+          invoke_code_reviewer_agent()
+      else:
+          # User lacks permission - inform them
+          return "You don't have access to the code-reviewer agent"
+  elif response.status_code == 404:
+      # User doesn't exist - optionally create them
+      return "User not found in permission system"
+  ```
+
+  ### Error Handling:
+  - Always check the `status` field in responses
+  - For errors, use `error.code` for programmatic handling
+  - Use `error.message` for user-friendly error messages
+  - Handle 404 responses gracefully (user might not exist yet)
+
+  ### Best Practices:
+  - User IDs are case-insensitive (stored as lowercase)
+  - Agent names should be consistent across your system
+  - Use descriptive agent names (e.g., "code-reviewer" not "cr")
+  - Handle network errors and timeouts appropriately

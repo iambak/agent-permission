@@ -1,0 +1,96 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Agent Permission API
+
+Globals:
+  Function:
+    Timeout: 15
+    MemorySize: 128
+    Runtime: python3.9
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, prod]
+
+Resources:
+  # S3 Bucket for permissions data
+  PermissionsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "agent-permissions-data-${Environment}-${AWS::AccountId}"
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # Lambda function
+  AgentPermissionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "agent-permission-api-${Environment}"
+      CodeUri: src/
+      Handler: lambda_handler.handler
+      Environment:
+        Variables:
+          S3_BUCKET_NAME: !Ref PermissionsBucket
+          S3_FILE_KEY: permissions.json
+          ENVIRONMENT: !Ref Environment
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref PermissionsBucket
+        - S3WritePolicy:
+            BucketName: !Ref PermissionsBucket
+      Events:
+        GetUserExists:
+          Type: Api
+          Properties:
+            Path: /users/{user_id}
+            Method: get
+            RestApiId: !Ref AgentPermissionApi
+        CreateUser:
+          Type: Api
+          Properties:
+            Path: /users
+            Method: post
+            RestApiId: !Ref AgentPermissionApi
+        GetPermissions:
+          Type: Api
+          Properties:
+            Path: /permissions/{user_id}
+            Method: get
+            RestApiId: !Ref AgentPermissionApi
+        AddPermission:
+          Type: Api
+          Properties:
+            Path: /permissions/{user_id}/agents
+            Method: post
+            RestApiId: !Ref AgentPermissionApi
+
+  # API Gateway
+  AgentPermissionApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub "agent-permission-api-${Environment}"
+      StageName: !Ref Environment
+      Cors:
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: "'*'"
+
+Outputs:
+  AgentPermissionApi:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${AgentPermissionApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/"
+
+  AgentPermissionFunction:
+    Description: "Lambda Function ARN"
+    Value: !GetAtt AgentPermissionFunction.Arn
+
+  PermissionsBucket:
+    Description: "S3 bucket for permissions data"
+    Value: !Ref PermissionsBucket
