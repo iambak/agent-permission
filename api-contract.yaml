@@ -2,13 +2,15 @@ openapi: 3.0.3
 info:
   title: Agent Permission API
   description: |
-    API for managing user permissions to access specialized AI agents.
+    API for managing user permissions to access specialized AI agents and user profile management.
 
     This API allows general-purpose AI agents to:
     1. Check if a user exists in the system
     2. Verify which specialized agents a user has access to
     3. Grant new permissions to users
     4. Create new users with empty permissions
+    5. Manage detailed user profiles with contact information
+    6. Create profiles with auto-generated user IDs
 
     **Base URL**: `https://kpfnbcvnfb.execute-api.us-east-1.amazonaws.com/dev/`
 
@@ -266,6 +268,273 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /profiles:
+    get:
+      summary: List all user profiles
+      description: |
+        Retrieves a list of all user profiles with basic information.
+
+        **Use Case**: Get overview of all users in the system.
+
+        **Agent Instructions**: Use this to see all available users and their basic info.
+      responses:
+        '200':
+          description: Profiles retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileListResponse'
+              example:
+                status: "success"
+                data:
+                  profiles:
+                    - user_id: "abhinav"
+                      email: "abhinav.thunderbolt@example.com"
+                      first_name: "Abhinav"
+                      last_name: "Thunderbolt"
+                      company: ""
+                      created_at: "2025-09-15T09:00:00.000000"
+                    - user_id: "quang"
+                      email: "quang.stormwind@example.com"
+                      first_name: "Quang"
+                      last_name: "Stormwind"
+                      company: ""
+                      created_at: "2025-09-16T14:30:00.000000"
+                  total_count: 2
+        '500':
+          description: Service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      summary: Create user profile
+      description: |
+        Creates a new user profile with auto-generated user_id from first_name.
+
+        **Use Case**: Create detailed user profiles for new users.
+
+        **Agent Instructions**:
+        1. Only first_name, last_name, and email are required
+        2. user_id is automatically generated from first_name (lowercase)
+        3. first_name must contain only letters, numbers, hyphens, and underscores
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProfileRequest'
+            example:
+              first_name: "John"
+              last_name: "Doe"
+              email: "john.doe@example.com"
+              phone: "+1-555-0123"
+              company: "Tech Corp"
+              role: "Developer"
+              bio: "Software engineer"
+      responses:
+        '201':
+          description: Profile created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+              example:
+                status: "success"
+                data:
+                  user_id: "john"
+                  profile:
+                    email: "john.doe@example.com"
+                    first_name: "John"
+                    last_name: "Doe"
+                    phone: "+1-555-0123"
+                    company: "Tech Corp"
+                    role: "Developer"
+                    bio: "Software engineer"
+                    created_at: "2025-09-17T12:00:00.000000"
+                    updated_at: "2025-09-17T12:00:00.000000"
+                message: "Profile created successfully"
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Profile already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /profiles/{user_id}:
+    get:
+      summary: Get user profile
+      description: |
+        Retrieves detailed profile information for a specific user.
+
+        **Use Case**: Get complete user profile details.
+
+        **Agent Instructions**: Use this to get full user information including bio, role, etc.
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: The unique identifier for the user (case-insensitive)
+          schema:
+            type: string
+            example: "abhinav"
+      responses:
+        '200':
+          description: Profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+              example:
+                status: "success"
+                data:
+                  user_id: "abhinav"
+                  profile:
+                    email: "abhinav.thunderbolt@example.com"
+                    first_name: "Abhinav"
+                    last_name: "Thunderbolt"
+                    phone: ""
+                    company: ""
+                    role: "Day Trading Superhero"
+                    bio: "Strikes the market like lightning with quick trades. Known for electrifying gains and shocking comebacks."
+                    created_at: "2025-09-15T09:00:00.000000"
+                    updated_at: "2025-09-15T09:00:00.000000"
+        '404':
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: "error"
+                error:
+                  code: "PROFILE_NOT_FOUND"
+                  message: "User profile was not found"
+                  user_id: "unknown_user"
+        '500':
+          description: Service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Update user profile
+      description: |
+        Updates an existing user profile. All fields are optional except those being updated.
+
+        **Use Case**: Modify existing user profile information.
+
+        **Agent Instructions**: Send only the fields you want to update.
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: The unique identifier for the user (case-insensitive)
+          schema:
+            type: string
+            example: "abhinav"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+            example:
+              phone: "+1-555-9999"
+              role: "Senior Trading Expert"
+              bio: "Master of lightning-fast trades and market analysis."
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Delete user profile
+      description: |
+        Deletes a user profile from the system.
+
+        **Use Case**: Remove user profile when no longer needed.
+
+        **Agent Instructions**: Use with caution - this permanently removes the profile.
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: The unique identifier for the user (case-insensitive)
+          schema:
+            type: string
+            example: "abhinav"
+      responses:
+        '200':
+          description: Profile deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: ["success"]
+                  data:
+                    type: object
+                    properties:
+                      user_id:
+                        type: string
+                  message:
+                    type: string
+              example:
+                status: "success"
+                data:
+                  user_id: "abhinav"
+                message: "Profile deleted successfully"
+        '404':
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
   schemas:
     UserExistsResponse:
@@ -428,6 +697,8 @@ components:
               enum:
                 - "USER_NOT_FOUND"
                 - "USER_ALREADY_EXISTS"
+                - "PROFILE_NOT_FOUND"
+                - "PROFILE_ALREADY_EXISTS"
                 - "INVALID_REQUEST"
                 - "SERVICE_UNAVAILABLE"
                 - "NOT_FOUND"
@@ -438,6 +709,161 @@ components:
             user_id:
               type: string
               description: The user ID that caused the error (when applicable)
+
+    ProfileListResponse:
+      type: object
+      required:
+        - status
+        - data
+      properties:
+        status:
+          type: string
+          enum: ["success"]
+        data:
+          type: object
+          required:
+            - profiles
+            - total_count
+          properties:
+            profiles:
+              type: array
+              items:
+                $ref: '#/components/schemas/ProfileSummary'
+            total_count:
+              type: integer
+              description: Total number of profiles
+
+    ProfileSummary:
+      type: object
+      required:
+        - user_id
+        - email
+        - first_name
+        - last_name
+        - company
+        - created_at
+      properties:
+        user_id:
+          type: string
+        email:
+          type: string
+        first_name:
+          type: string
+        last_name:
+          type: string
+        company:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    CreateProfileRequest:
+      type: object
+      required:
+        - first_name
+        - last_name
+        - email
+      properties:
+        first_name:
+          type: string
+          description: First name (will be used to generate user_id as lowercase)
+          pattern: '^[a-zA-Z0-9_-]+$'
+          example: "John"
+        last_name:
+          type: string
+          example: "Doe"
+        email:
+          type: string
+          format: email
+          example: "john.doe@example.com"
+        phone:
+          type: string
+          example: "+1-555-0123"
+        company:
+          type: string
+          example: "Tech Corp"
+        role:
+          type: string
+          example: "Developer"
+        bio:
+          type: string
+          example: "Software engineer with 5 years experience"
+
+    UpdateProfileRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        first_name:
+          type: string
+        last_name:
+          type: string
+        phone:
+          type: string
+        company:
+          type: string
+        role:
+          type: string
+        bio:
+          type: string
+
+    ProfileResponse:
+      type: object
+      required:
+        - status
+        - data
+      properties:
+        status:
+          type: string
+          enum: ["success"]
+        data:
+          type: object
+          required:
+            - user_id
+            - profile
+          properties:
+            user_id:
+              type: string
+            profile:
+              $ref: '#/components/schemas/ProfileDetails'
+        message:
+          type: string
+
+    ProfileDetails:
+      type: object
+      required:
+        - email
+        - first_name
+        - last_name
+        - phone
+        - company
+        - role
+        - bio
+        - created_at
+        - updated_at
+      properties:
+        email:
+          type: string
+          format: email
+        first_name:
+          type: string
+        last_name:
+          type: string
+        phone:
+          type: string
+        company:
+          type: string
+        role:
+          type: string
+        bio:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
 
   # Common agent names for reference
   examples:
@@ -463,6 +889,13 @@ x-ai-agent-instructions: |
   3. **Verify access**: Check if desired agent is in `permitted_agents` array
   4. **Grant access if needed**: `POST /permissions/{user_id}/agents`
 
+  ### Profile Management Workflow:
+  1. **List all users**: `GET /profiles` - Get overview of all users
+  2. **Get user details**: `GET /profiles/{user_id}` - Get full profile info
+  3. **Create new user**: `POST /profiles` - Auto-generates user_id from first_name
+  4. **Update profile**: `PUT /profiles/{user_id}` - Modify existing profile
+  5. **Delete profile**: `DELETE /profiles/{user_id}` - Remove user profile
+
   ### Example Implementation:
   ```python
   # Check if user can access "code-reviewer" agent
@@ -479,16 +912,27 @@ x-ai-agent-instructions: |
   elif response.status_code == 404:
       # User doesn't exist - optionally create them
       return "User not found in permission system"
+
+  # Create a new user profile (auto-generates user_id)
+  profile_response = requests.post(f"{base_url}/profiles", json={
+      "first_name": "John",
+      "last_name": "Doe",
+      "email": "john.doe@example.com",
+      "role": "Trader"
+  })
+  # user_id will be "john" (lowercase first_name)
   ```
 
   ### Error Handling:
   - Always check the `status` field in responses
   - For errors, use `error.code` for programmatic handling
   - Use `error.message` for user-friendly error messages
-  - Handle 404 responses gracefully (user might not exist yet)
+  - Handle 404 responses gracefully (user/profile might not exist yet)
 
   ### Best Practices:
   - User IDs are case-insensitive (stored as lowercase)
   - Agent names should be consistent across your system
   - Use descriptive agent names (e.g., "code-reviewer" not "cr")
+  - Profile creation auto-generates user_id from first_name (lowercase)
+  - first_name must contain only letters, numbers, hyphens, and underscores
   - Handle network errors and timeouts appropriately

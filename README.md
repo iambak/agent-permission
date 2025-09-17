@@ -11,22 +11,53 @@ A serverless API for managing user permissions to access specialized AI agents. 
 ### Basic Permission Check
 ```bash
 # Check if user has permissions
-curl "https://kpfnbcvnfb.execute-api.us-east-1.amazonaws.com/dev/permissions/user_123"
+curl "https://kpfnbcvnfb.execute-api.us-east-1.amazonaws.com/dev/permissions/abhinav"
 
 # Response: List of permitted agents
 {
   "status": "success",
   "data": {
-    "user_id": "user_123",
-    "permitted_agents": ["code-reviewer", "data-analyst"]
+    "user_id": "abhinav",
+    "permitted_agents": []
   }
 }
+```
+
+### User Profile Management
+```bash
+# Get user profile
+curl "https://kpfnbcvnfb.execute-api.us-east-1.amazonaws.com/dev/profiles/abhinav"
+
+# Response: User profile details
+{
+  "status": "success",
+  "data": {
+    "user_id": "abhinav",
+    "profile": {
+      "email": "abhinav.thunderbolt@example.com",
+      "first_name": "Abhinav",
+      "last_name": "Thunderbolt",
+      "role": "Day Trading Superhero",
+      "bio": "Strikes the market like lightning with quick trades.",
+      "created_at": "2025-09-15T09:00:00.000000"
+    }
+  }
+}
+
+# Create new profile (auto-generates user_id from first_name)
+curl -X POST "https://kpfnbcvnfb.execute-api.us-east-1.amazonaws.com/dev/profiles" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "first_name": "John",
+    "last_name": "Doe",
+    "email": "john.doe@example.com"
+  }'
 ```
 
 ### Grant New Permission
 ```bash
 # Add agent permission to user
-curl -X POST "https://kpfnbcvnfb.execute-api.us-east-1.amazonaws.com/dev/permissions/user_123/agents" \
+curl -X POST "https://kpfnbcvnfb.execute-api.us-east-1.amazonaws.com/dev/permissions/abhinav/agents" \
   -H "Content-Type: application/json" \
   -d '{"agent_name": "image-generator"}'
 
@@ -34,9 +65,9 @@ curl -X POST "https://kpfnbcvnfb.execute-api.us-east-1.amazonaws.com/dev/permiss
 {
   "status": "success",
   "data": {
-    "user_id": "user_123",
+    "user_id": "abhinav",
     "agent_added": "image-generator",
-    "permitted_agents": ["code-reviewer", "data-analyst", "image-generator"]
+    "permitted_agents": ["image-generator"]
   },
   "message": "Permission added successfully"
 }
@@ -125,6 +156,11 @@ See [`api-contract.yaml`](./api-contract.yaml) for the complete OpenAPI 3.0 spec
 | `POST` | `/users` | Create new user | Initialize new users |
 | `GET` | `/permissions/{user_id}` | Get user's agent permissions | **Main endpoint**: Check before agent invocation |
 | `POST` | `/permissions/{user_id}/agents` | Grant agent permission | Add new permissions when needed |
+| `GET` | `/profiles` | List all user profiles | Get overview of all users |
+| `GET` | `/profiles/{user_id}` | Get user profile details | Get detailed user information |
+| `POST` | `/profiles` | Create user profile | Create profile with auto user_id generation |
+| `PUT` | `/profiles/{user_id}` | Update user profile | Modify existing profile information |
+| `DELETE` | `/profiles/{user_id}` | Delete user profile | Remove user profile |
 
 ### Response Format
 
@@ -214,13 +250,37 @@ sam deploy --guided
 ## 📊 Data Storage
 
 ### S3 Structure
+
+**Permissions File (`permissions.json`)**
 ```json
 {
-  "last_updated": "2024-01-15T10:30:00Z",
+  "last_updated": "2025-09-17T09:00:00.000000",
   "permissions": {
-    "user_123": ["code-reviewer", "data-analyst"],
-    "user_456": ["image-generator"],
-    "user_789": ["pdf-processor", "test-runner"]
+    "abhinav": [],
+    "quang": [],
+    "raghav": [],
+    "venkat": [],
+    "bak": []
+  }
+}
+```
+
+**User Profiles File (`user_profiles.json`)**
+```json
+{
+  "last_updated": "2025-09-17T10:30:00.000000",
+  "profiles": {
+    "abhinav": {
+      "email": "abhinav.thunderbolt@example.com",
+      "first_name": "Abhinav",
+      "last_name": "Thunderbolt",
+      "phone": "",
+      "company": "",
+      "role": "Day Trading Superhero",
+      "bio": "Strikes the market like lightning with quick trades. Known for electrifying gains and shocking comebacks.",
+      "created_at": "2025-09-15T09:00:00.000000",
+      "updated_at": "2025-09-15T09:00:00.000000"
+    }
   }
 }
 ```
@@ -228,7 +288,8 @@ sam deploy --guided
 ### Data Management
 - User IDs are stored in lowercase for consistency
 - Agent names should be descriptive (e.g., "code-reviewer", not "cr")
-- File is automatically created if it doesn't exist
+- Files are automatically created if they don't exist
+- Profile creation auto-generates user_id from first_name (lowercase)
 - Supports both local file storage (SAM Local) and S3 (AWS)
 
 ## 🔒 Security Considerations

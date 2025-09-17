@@ -28,7 +28,7 @@ Resources:
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
 
-  # Lambda function
+  # Lambda function for permissions
   AgentPermissionFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -71,6 +71,67 @@ Resources:
             Method: post
             RestApiId: !Ref AgentPermissionApi
 
+  # Lambda function for user profiles
+  UserProfileFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "user-profile-api-${Environment}"
+      CodeUri: src/
+      Handler: profile_handler.handler
+      Environment:
+        Variables:
+          S3_BUCKET_NAME: !Ref PermissionsBucket
+          S3_PROFILES_FILE_KEY: user_profiles.json
+          ENVIRONMENT: !Ref Environment
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref PermissionsBucket
+        - S3WritePolicy:
+            BucketName: !Ref PermissionsBucket
+      Events:
+        ListProfiles:
+          Type: Api
+          Properties:
+            Path: /profiles
+            Method: get
+            RestApiId: !Ref AgentPermissionApi
+        CreateProfile:
+          Type: Api
+          Properties:
+            Path: /profiles
+            Method: post
+            RestApiId: !Ref AgentPermissionApi
+        GetProfile:
+          Type: Api
+          Properties:
+            Path: /profiles/{user_id}
+            Method: get
+            RestApiId: !Ref AgentPermissionApi
+        UpdateProfile:
+          Type: Api
+          Properties:
+            Path: /profiles/{user_id}
+            Method: put
+            RestApiId: !Ref AgentPermissionApi
+        DeleteProfile:
+          Type: Api
+          Properties:
+            Path: /profiles/{user_id}
+            Method: delete
+            RestApiId: !Ref AgentPermissionApi
+        ProfileOptions:
+          Type: Api
+          Properties:
+            Path: /profiles
+            Method: options
+            RestApiId: !Ref AgentPermissionApi
+        ProfileUserOptions:
+          Type: Api
+          Properties:
+            Path: /profiles/{user_id}
+            Method: options
+            RestApiId: !Ref AgentPermissionApi
+
   # API Gateway
   AgentPermissionApi:
     Type: AWS::Serverless::Api
@@ -78,7 +139,7 @@ Resources:
       Name: !Sub "agent-permission-api-${Environment}"
       StageName: !Ref Environment
       Cors:
-        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
         AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
         AllowOrigin: "'*'"
 
@@ -90,6 +151,10 @@ Outputs:
   AgentPermissionFunction:
     Description: "Lambda Function ARN"
     Value: !GetAtt AgentPermissionFunction.Arn
+
+  UserProfileFunction:
+    Description: "User Profile Lambda Function ARN"
+    Value: !GetAtt UserProfileFunction.Arn
 
   PermissionsBucket:
     Description: "S3 bucket for permissions data"

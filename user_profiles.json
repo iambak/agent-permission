@@ -1,0 +1,60 @@
+{
+  "last_updated": "2025-09-17T10:30:00.000000",
+  "profiles": {
+    "abhinav": {
+      "email": "abhinav.thunderbolt@example.com",
+      "first_name": "Abhinav",
+      "last_name": "Thunderbolt",
+      "phone": "",
+      "company": "",
+      "role": "Day Trading Superhero",
+      "bio": "Strikes the market like lightning with quick trades. Known for electrifying gains and shocking comebacks.",
+      "created_at": "2025-09-15T09:00:00.000000",
+      "updated_at": "2025-09-15T09:00:00.000000"
+    },
+    "quang": {
+      "email": "quang.stormwind@example.com",
+      "first_name": "Quang",
+      "last_name": "Stormwind",
+      "phone": "",
+      "company": "",
+      "role": "Storm Chasing Investor",
+      "bio": "Rides market volatility like a hurricane. Loves turbulent times and profits from financial storms.",
+      "created_at": "2025-09-16T14:30:00.000000",
+      "updated_at": "2025-09-16T14:30:00.000000"
+    },
+    "raghav": {
+      "email": "raghav.fireburst@example.com",
+      "first_name": "Raghav",
+      "last_name": "Fireburst",
+      "phone": "",
+      "company": "",
+      "role": "High-Risk Trader",
+      "bio": "Plays with fire in the options market. Known for explosive trades that either burn bright or crash spectacularly.",
+      "created_at": "2025-09-17T11:00:00.000000",
+      "updated_at": "2025-09-17T11:00:00.000000"
+    },
+    "venkat": {
+      "email": "venkat.vader@example.com",
+      "first_name": "Venkat",
+      "last_name": "Vader",
+      "phone": "",
+      "company": "",
+      "role": "Contrarian Investor",
+      "bio": "Trades on the dark side of market sentiment. Believes in the power of going against the crowd - 'Your overconfidence is your weakness'.",
+      "created_at": "2025-09-17T11:15:00.000000",
+      "updated_at": "2025-09-17T11:15:00.000000"
+    },
+    "bak": {
+      "email": "bak.lightspeed@example.com",
+      "first_name": "Bak",
+      "last_name": "Lightspeed",
+      "phone": "",
+      "company": "",
+      "role": "Algorithmic Trader",
+      "bio": "Moves at lightspeed through market opportunities. Uses quantum-level analysis to find profitable trades before they happen.",
+      "created_at": "2025-09-17T11:20:00.000000",
+      "updated_at": "2025-09-17T11:20:00.000000"
+    }
+  }
+}
