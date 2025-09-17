@@ -70,6 +70,24 @@ Resources:
             Path: /permissions/{user_id}/agents
             Method: post
             RestApiId: !Ref AgentPermissionApi
+        GetAllPermissions:
+          Type: Api
+          Properties:
+            Path: /permissions
+            Method: get
+            RestApiId: !Ref AgentPermissionApi
+        ClearUserPermissions:
+          Type: Api
+          Properties:
+            Path: /permissions/{user_id}
+            Method: delete
+            RestApiId: !Ref AgentPermissionApi
+        ClearAllPermissions:
+          Type: Api
+          Properties:
+            Path: /permissions
+            Method: delete
+            RestApiId: !Ref AgentPermissionApi
 
   # Lambda function for user profiles
   UserProfileFunction:

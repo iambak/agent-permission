@@ -187,6 +187,57 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+    delete:
+      summary: Clear user's agent permissions
+      description: |
+        Clears all agent permissions for a specific user, setting their permitted_agents to an empty array.
+
+        **Use Case**: Revoke all access for a user when they should no longer have any agent permissions.
+
+        **Agent Instructions**:
+        1. This will remove ALL permissions for the specified user
+        2. The user will remain in the system but with no agent access
+        3. Use this when you need to reset a user's permissions completely
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: The unique identifier for the user (case-insensitive)
+          schema:
+            type: string
+            example: "user_123"
+      responses:
+        '200':
+          description: User permissions cleared successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClearPermissionsResponse'
+              example:
+                status: "success"
+                data:
+                  user_id: "user_123"
+                  permitted_agents: []
+                message: "All permissions cleared for user"
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: "error"
+                error:
+                  code: "USER_NOT_FOUND"
+                  message: "User was not found in the system"
+                  user_id: "unknown_user"
+        '500':
+          description: Service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /permissions/{user_id}/agents:
     post:
       summary: Grant agent permission to user
@@ -261,6 +312,76 @@ paths:
                 error:
                   code: "INVALID_REQUEST"
                   message: "agent_name is required"
+        '500':
+          description: Service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /permissions:
+    get:
+      summary: Get all permissions
+      description: |
+        Retrieves all users and their agent permissions in the system.
+
+        **Use Case**: Get a comprehensive overview of all user permissions for admin/management purposes.
+
+        **Agent Instructions**:
+        1. This returns ALL users and their permissions in one call
+        2. Use the summary statistics to understand system usage
+        3. Use this for administrative dashboards or bulk permission analysis
+        4. The response includes both the detailed permissions and summary metrics
+      responses:
+        '200':
+          description: All permissions retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AllPermissionsResponse'
+              example:
+                status: "success"
+                data:
+                  permissions:
+                    user_123: ["code-reviewer", "data-analyst"]
+                    user_456: ["image-generator"]
+                    user_789: []
+                  summary:
+                    total_users: 3
+                    users_with_permissions: 2
+                    total_permissions: 3
+        '500':
+          description: Service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Clear all permissions for all users
+      description: |
+        Clears all agent permissions for ALL users in the system. This is a global reset operation.
+
+        **Use Case**: System-wide permission reset or maintenance operations.
+
+        **Agent Instructions**:
+        1. This will remove ALL permissions for ALL users in the system
+        2. All users will remain in the system but with no agent access
+        3. Use with extreme caution - this affects every user
+        4. Consider this a "nuclear option" for permission management
+      responses:
+        '200':
+          description: All permissions cleared successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClearAllPermissionsResponse'
+              example:
+                status: "success"
+                data:
+                  users_affected: 3
+                  users: ["user_123", "user_456", "user_789"]
+                message: "All permissions cleared for all users"
         '500':
           description: Service unavailable
           content:
@@ -677,6 +798,111 @@ components:
             - "Permission already exists"
             - "User created and permission added successfully"
 
+    ClearPermissionsResponse:
+      type: object
+      required:
+        - status
+        - data
+        - message
+      properties:
+        status:
+          type: string
+          enum: ["success"]
+        data:
+          type: object
+          required:
+            - user_id
+            - permitted_agents
+          properties:
+            user_id:
+              type: string
+              description: The normalized user ID (lowercase)
+            permitted_agents:
+              type: array
+              items:
+                type: string
+              description: Always empty after clearing permissions
+              example: []
+        message:
+          type: string
+          example: "All permissions cleared for user"
+
+    AllPermissionsResponse:
+      type: object
+      required:
+        - status
+        - data
+      properties:
+        status:
+          type: string
+          enum: ["success"]
+        data:
+          type: object
+          required:
+            - permissions
+            - summary
+          properties:
+            permissions:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: string
+              description: Object mapping user IDs to their permitted agents
+              example:
+                user_123: ["code-reviewer", "data-analyst"]
+                user_456: ["image-generator"]
+                user_789: []
+            summary:
+              type: object
+              required:
+                - total_users
+                - users_with_permissions
+                - total_permissions
+              properties:
+                total_users:
+                  type: integer
+                  description: Total number of users in the system
+                  example: 3
+                users_with_permissions:
+                  type: integer
+                  description: Number of users with at least one permission
+                  example: 2
+                total_permissions:
+                  type: integer
+                  description: Total number of permissions across all users
+                  example: 3
+
+    ClearAllPermissionsResponse:
+      type: object
+      required:
+        - status
+        - data
+        - message
+      properties:
+        status:
+          type: string
+          enum: ["success"]
+        data:
+          type: object
+          required:
+            - users_affected
+            - users
+          properties:
+            users_affected:
+              type: integer
+              description: Number of users whose permissions were cleared
+              example: 3
+            users:
+              type: array
+              items:
+                type: string
+              description: List of user IDs that were affected
+              example: ["user_123", "user_456", "user_789"]
+        message:
+          type: string
+          example: "All permissions cleared for all users"
+
     ErrorResponse:
       type: object
       required:
@@ -888,6 +1114,9 @@ x-ai-agent-instructions: |
   2. **Get user permissions**: `GET /permissions/{user_id}`
   3. **Verify access**: Check if desired agent is in `permitted_agents` array
   4. **Grant access if needed**: `POST /permissions/{user_id}/agents`
+  5. **Get all permissions**: `GET /permissions` - Get overview of all users and their permissions
+  6. **Clear user permissions**: `DELETE /permissions/{user_id}` - Remove all permissions for one user
+  7. **Clear all permissions**: `DELETE /permissions` - Remove all permissions for all users (use with caution)
 
   ### Profile Management Workflow:
   1. **List all users**: `GET /profiles` - Get overview of all users

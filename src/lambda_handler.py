@@ -316,6 +316,105 @@ def handle_create_user(body: str) -> dict:
             }
         })
 
+def handle_clear_user_permissions(user_id: str) -> dict:
+    """Handle DELETE /permissions/{user_id}"""
+    try:
+        # Normalize user_id to lowercase
+        user_id = user_id.lower()
+        data = read_permissions()
+
+        if user_id not in data["permissions"]:
+            return create_response(404, {
+                "status": "error",
+                "error": {
+                    "code": "USER_NOT_FOUND",
+                    "message": "User was not found in the system",
+                    "user_id": user_id
+                }
+            })
+
+        # Clear all permissions for the user
+        data["permissions"][user_id] = []
+        write_permissions(data)
+
+        return create_response(200, {
+            "status": "success",
+            "data": {
+                "user_id": user_id,
+                "permitted_agents": []
+            },
+            "message": "All permissions cleared for user"
+        })
+
+    except Exception as e:
+        return create_response(500, {
+            "status": "error",
+            "error": {
+                "code": "SERVICE_UNAVAILABLE",
+                "message": "Unable to clear permissions at this time"
+            }
+        })
+
+def handle_get_all_permissions() -> dict:
+    """Handle GET /permissions"""
+    try:
+        data = read_permissions()
+
+        # Calculate summary statistics
+        total_users = len(data["permissions"])
+        users_with_permissions = sum(1 for perms in data["permissions"].values() if len(perms) > 0)
+        total_permissions = sum(len(perms) for perms in data["permissions"].values())
+
+        return create_response(200, {
+            "status": "success",
+            "data": {
+                "permissions": data["permissions"],
+                "summary": {
+                    "total_users": total_users,
+                    "users_with_permissions": users_with_permissions,
+                    "total_permissions": total_permissions
+                }
+            }
+        })
+
+    except Exception as e:
+        return create_response(500, {
+            "status": "error",
+            "error": {
+                "code": "SERVICE_UNAVAILABLE",
+                "message": "Unable to retrieve permissions at this time"
+            }
+        })
+
+def handle_clear_all_permissions() -> dict:
+    """Handle DELETE /permissions"""
+    try:
+        data = read_permissions()
+
+        # Clear all permissions for all users
+        for user_id in data["permissions"]:
+            data["permissions"][user_id] = []
+
+        write_permissions(data)
+
+        return create_response(200, {
+            "status": "success",
+            "data": {
+                "users_affected": len(data["permissions"]),
+                "users": list(data["permissions"].keys())
+            },
+            "message": "All permissions cleared for all users"
+        })
+
+    except Exception as e:
+        return create_response(500, {
+            "status": "error",
+            "error": {
+                "code": "SERVICE_UNAVAILABLE",
+                "message": "Unable to clear permissions at this time"
+            }
+        })
+
 def handler(event, context):
     """Main Lambda handler"""
 
@@ -343,6 +442,15 @@ def handler(event, context):
     elif method == 'POST' and path.startswith('/permissions/') and path.endswith('/agents'):
         body = event.get('body', '{}')
         return handle_add_permission(user_id, body)
+
+    elif method == 'GET' and path == '/permissions':
+        return handle_get_all_permissions()
+
+    elif method == 'DELETE' and path.startswith('/permissions/') and user_id:
+        return handle_clear_user_permissions(user_id)
+
+    elif method == 'DELETE' and path == '/permissions':
+        return handle_clear_all_permissions()
 
     else:
         return create_response(404, {
